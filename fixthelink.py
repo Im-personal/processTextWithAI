@@ -1,6 +1,5 @@
 import openai
 
-
 __is_api_set = False
 __is_init = False
 __messages = []
