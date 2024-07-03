@@ -17,9 +17,20 @@ linktypes_first = [
 ("телеграм-юзернейм","@mychannel"),
 ]
 
-def init(linkname = "thelink", linktypes=None):
+__model = ""
+__length = 100000
+
+def init(linkname = "thelink", linktypes=None, model = "gpt-3.5-turbo", length = 4000):
     global __messages
     global __is_init
+    global __model
+    global __length
+
+    __model = model
+    __length = length
+
+    linkname = linkname.replace("<","").replace(">","").replace("/","").replace("\\","")
+
     if linktypes is None:
         linktypes = linktypes_first
 
@@ -37,6 +48,8 @@ def init(linkname = "thelink", linktypes=None):
 Ввод: "Нужно понимать, где искать Помощь.РФ готова её предоставить!"
 Вывод: "Нужно понимать, где искать Помощь.РФ готова её предоставить!" - Помощь.РФ в данном случае опечатка.
 Нужно выделить только то, что предоставлено среди вариантов: {vars}
+В тексте могут содержаться HTML теги, если какой либо из тегов является ссылкой - его не нужно трогать или как либо изменять. Пример HTLM тегов, которые трогать не нужно: <href> <a>. Если название тега совпадает с <{linkname}>, его все еще не нужно никак менять.
+Могут быть конструкции, похожие на ссылки из за опечатки, но ими не являться. Например, если слово после точки будет написано через пробел от второго составляющего слова. В таком случае данную конструкцию НЕ НУЖНО выделять как ссылку. Примеры возможных ошибок: люди живут счастливо.ру лет у нас самый вкусный; этим занимаются большие федерации.ком пании делают все, чтобы…; мы поплыли на север.су дно устойчиво; there is a lot of nice looking countries.fr ench may be the example; there are countries with communism still.ch ina is one of them
 Я отправлю текст - нужно написать ТОЛЬКО измененный текст, ничего не добавляя от себя.
     """
 
@@ -48,12 +61,30 @@ def init(linkname = "thelink", linktypes=None):
 
 
 def add_tags_to_text(text):
+    is_not_finished = True
+    res = ""
+
+    textarr = split_text(text,__length)
+
+    for txt in textarr:
+        while is_not_finished:
+            try:
+                res += linkify(txt)
+                is_not_finished=True
+            except RuntimeError:
+                pass
+    return res
+
+def split_text(text,n=4000):
+    return [text[i:i + n] for i in range(0, len(text), n)]
+
+def linkify(text):
     global __messages
     if __is_api_set and __is_init:
         print("Text is processing...")
         __messages.append({"role": "user", "content": text})
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=__model,
             messages=__messages,
         )
 
